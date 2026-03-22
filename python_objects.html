@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Memory Reference Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .memory-box {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .pointer-line {
+            transition: all 0.5s ease-in-out;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 0;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .highlight-code {
+            background-color: rgba(59, 130, 246, 0.2);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col items-center p-4 md:p-8 font-sans">
+
+    <div class="max-w-4xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+        <!-- Header -->
+        <div class="bg-slate-900 text-white p-6">
+            <h1 class="text-2xl font-bold">Python Object Reference & Immutability</h1>
+            <p class="text-slate-400 text-sm mt-1">Visualizing Variables, Objects, and Identifiers (Memory Locations)</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 min-h-[500px]">
+            <!-- Left: Controls & Explanation -->
+            <div class="p-6 bg-slate-50 border-r border-slate-200 flex flex-col gap-6">
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Python Code</h2>
+                    <div class="bg-slate-900 text-green-400 p-4 rounded-lg font-mono text-sm shadow-inner leading-relaxed">
+                        <div id="code-line-1" class="px-2 py-1 transition-colors">>>> num1 = 300</div>
+                        <div id="code-line-2" class="px-2 py-1 transition-colors">>>> num2 = num1</div>
+                        <div id="code-line-3" class="px-2 py-1 transition-colors">>>> num1 = num2 + 100</div>
+                    </div>
+                </div>
+
+                <div class="flex-grow">
+                    <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Explanation</h2>
+                    <p id="explanation-text" class="text-slate-700 text-sm leading-relaxed italic">
+                        Click 'Next Step' to begin the simulation.
+                    </p>
+                </div>
+
+                <div class="flex gap-2">
+                    <button id="reset-btn" class="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-medium transition-colors">
+                        Reset
+                    </button>
+                    <button id="next-btn" class="flex-[2] px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-transform active:scale-95 shadow-lg shadow-blue-200">
+                        Next Step
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: Visual Area -->
+            <div class="col-span-2 relative p-8 flex flex-col items-center justify-center overflow-hidden bg-white">
+                
+                <!-- SVG layer for arrows -->
+                <svg id="arrow-svg" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 10;">
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6" />
+                        </marker>
+                    </defs>
+                    <line id="ptr-num1" x1="0" y1="0" x2="0" y2="0" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrowhead)" opacity="0" class="pointer-line" />
+                    <line id="ptr-num2" x1="0" y1="0" x2="0" y2="0" stroke="#10b981" stroke-width="2" marker-end="url(#arrowhead)" opacity="0" class="pointer-line" />
+                </svg>
+
+                <div class="w-full h-full flex items-center justify-around relative">
+                    <!-- Namespace (Identifiers) -->
+                    <div class="flex flex-col gap-24 items-start">
+                        <h3 class="absolute top-4 left-8 text-xs font-bold text-slate-400 uppercase tracking-widest">Identifiers (Names)</h3>
+                        
+                        <div id="label-num1" class="opacity-0 transition-opacity duration-500 flex items-center gap-2">
+                            <span class="bg-blue-100 text-blue-700 font-mono font-bold px-3 py-1 rounded border border-blue-200">num1</span>
+                        </div>
+
+                        <div id="label-num2" class="opacity-0 transition-opacity duration-500 flex items-center gap-2">
+                            <span class="bg-emerald-100 text-emerald-700 font-mono font-bold px-3 py-1 rounded border border-emerald-200">num2</span>
+                        </div>
+                    </div>
+
+                    <!-- Objects (Memory) -->
+                    <div class="flex flex-col gap-12 items-end">
+                        <h3 class="absolute top-4 right-8 text-xs font-bold text-slate-400 uppercase tracking-widest">Memory (Objects)</h3>
+                        
+                        <!-- Object 300 -->
+                        <div id="obj-300" class="memory-box opacity-0 scale-75 bg-slate-800 text-white rounded-xl p-4 w-40 shadow-2xl relative border-4 border-slate-700">
+                            <div class="text-xs text-slate-400 font-mono mb-1">Address: 1000</div>
+                            <div class="text-center text-3xl font-bold py-2">300</div>
+                            <div class="text-[10px] text-slate-500 text-right uppercase">int (immutable)</div>
+                        </div>
+
+                        <!-- Object 400 -->
+                        <div id="obj-400" class="memory-box opacity-0 scale-75 bg-slate-800 text-white rounded-xl p-4 w-40 shadow-2xl relative border-4 border-slate-700 translate-y-10">
+                            <div class="text-xs text-slate-400 font-mono mb-1">Address: 2200</div>
+                            <div class="text-center text-3xl font-bold py-2">400</div>
+                            <div class="text-[10px] text-slate-500 text-right uppercase">int (immutable)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Note -->
+        <div class="bg-slate-50 p-4 border-t border-slate-200 text-xs text-slate-500 text-center">
+            Integers are immutable. Updating a variable creates a <strong>new object</strong> rather than changing the existing one.
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 0;
+        const totalSteps = 3;
+
+        const nextBtn = document.getElementById('next-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const explanationText = document.getElementById('explanation-text');
+        
+        // UI Elements
+        const line1 = document.getElementById('code-line-1');
+        const line2 = document.getElementById('code-line-2');
+        const line3 = document.getElementById('code-line-3');
+        
+        const labelNum1 = document.getElementById('label-num1');
+        const labelNum2 = document.getElementById('label-num2');
+        
+        const obj300 = document.getElementById('obj-300');
+        const obj400 = document.getElementById('obj-400');
+        
+        const ptr1 = document.getElementById('ptr-num1');
+        const ptr2 = document.getElementById('ptr-num2');
+
+        function updatePointers() {
+            const getPos = (el) => {
+                const rect = el.getBoundingClientRect();
+                const container = document.getElementById('arrow-svg').getBoundingClientRect();
+                return {
+                    x: rect.left - container.left + rect.width,
+                    y: rect.top - container.top + (rect.height / 2),
+                    targetX: rect.left - container.left,
+                    targetY: rect.top - container.top + (rect.height / 2)
+                };
+            };
+
+            const start1 = getPos(labelNum1.querySelector('span'));
+            const start2 = getPos(labelNum2.querySelector('span'));
+            
+            let target1, target2;
+
+            if (currentStep === 1 || currentStep === 2) {
+                target1 = getPos(obj300);
+            } else if (currentStep === 3) {
+                target1 = getPos(obj400);
+            }
+
+            if (currentStep >= 2) {
+                target2 = getPos(obj300);
+            }
+
+            if (target1) {
+                ptr1.setAttribute('x1', start1.x);
+                ptr1.setAttribute('y1', start1.y);
+                ptr1.setAttribute('x2', target1.targetX - 5);
+                ptr1.setAttribute('y2', target1.targetY);
+                ptr1.style.opacity = "1";
+            } else {
+                ptr1.style.opacity = "0";
+            }
+
+            if (target2) {
+                ptr2.setAttribute('x1', start2.x);
+                ptr2.setAttribute('y1', start2.y);
+                ptr2.setAttribute('x2', target2.targetX - 5);
+                ptr2.setAttribute('y2', target2.targetY);
+                ptr2.style.opacity = "1";
+            } else {
+                ptr2.style.opacity = "0";
+            }
+        }
+
+        function runStep() {
+            currentStep++;
+
+            // Clear highlights
+            [line1, line2, line3].forEach(l => l.classList.remove('highlight-code'));
+
+            switch(currentStep) {
+                case 1:
+                    line1.classList.add('highlight-code');
+                    labelNum1.classList.remove('opacity-0');
+                    obj300.classList.remove('opacity-0', 'scale-75');
+                    explanationText.innerText = "This statement creates an integer object with value 300. The identifier 'num1' is made to reference this object at memory location 1000.";
+                    setTimeout(updatePointers, 100);
+                    break;
+
+                case 2:
+                    line2.classList.add('highlight-code');
+                    labelNum2.classList.remove('opacity-0');
+                    explanationText.innerText = "Instead of copying the data (300), Python copies the reference. Now both 'num1' and 'num2' point to the same object at location 1000.";
+                    setTimeout(updatePointers, 100);
+                    break;
+
+                case 3:
+                    line3.classList.add('highlight-code');
+                    obj400.classList.remove('opacity-0', 'scale-75');
+                    explanationText.innerText = "Because integers are IMMUTABLE, Python cannot change the value 300. It creates a NEW object (400) at location 2200 and updates 'num1' to point there. 'num2' remains unchanged.";
+                    setTimeout(updatePointers, 100);
+                    nextBtn.innerText = "Finish";
+                    nextBtn.classList.replace('bg-blue-600', 'bg-slate-500');
+                    break;
+                
+                default:
+                    // Animation complete state
+                    break;
+            }
+        }
+
+        function reset() {
+            currentStep = 0;
+            nextBtn.innerText = "Next Step";
+            nextBtn.classList.replace('bg-slate-500', 'bg-blue-600');
+            explanationText.innerText = "Click 'Next Step' to begin the simulation.";
+            
+            [line1, line2, line3].forEach(l => l.classList.remove('highlight-code'));
+            [labelNum1, labelNum2, obj300, obj400].forEach(el => {
+                el.classList.add('opacity-0');
+                if (el.classList.contains('memory-box')) el.classList.add('scale-75');
+            });
+            
+            ptr1.style.opacity = "0";
+            ptr2.style.opacity = "0";
+        }
+
+        nextBtn.addEventListener('click', () => {
+            if (currentStep < totalSteps) runStep();
+        });
+
+        resetBtn.addEventListener('click', reset);
+
+        window.addEventListener('resize', updatePointers);
+    </script>
+</body>
+</html>
